@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="m600_pro">
+
+  <xacro:include filename="$(find dji_m600_sim)/urdf/inertial.xacro" />
+  <xacro:include filename="$(find dji_m600_sim)/urdf/joints.xacro" />
+  <!-- <xacro:include filename="$(find dji_m600_sim)/urdf/transmissions.xacro" /> -->
+  <xacro:include filename="$(find dji_m600_sim)/urdf/geometries.xacro" />
+  <xacro:include filename="$(find dji_m600_sim)/urdf/properties.xacro" />
+  <xacro:include filename="$(find dji_m600_sim)/urdf/gazebo.xacro" />
+
+
+  <xacro:macro name="base_link">
+
+   <link name="base_footprint"/>
+
+    <joint name="base_joint" type="fixed">
+      <parent link="base_footprint"/>
+      <child link="base_link" />
+      <origin xyz="${chassisXoffset} ${chassisYoffset} ${chassisZoffset}" rpy="0 0 0"/>
+    </joint>
+
+    <link name="base_link">
+      <visual>
+        <xacro:box_geometry />
+      </visual>
+      <collision>
+        <xacro:box_geometry />
+      </collision>
+      <xacro:box_inertial/>
+    </link>
+
+    <xacro:base_gazebo/>
+  </xacro:macro>
+
+
+    <!-- <xacro:macro name="imu">
+    <link name="imu_link">
+      <visual>
+        <xacro:imu_geometry />
+      </visual>
+      <collision>
+        <xacro:imu_geometry />
+      </collision>
+      <xacro:imu_inertial />
+    </link>
+    <xacro:imu_joint />
+
+    <xacro:imu_gazebo />
+  </xacro:macro> -->
+
+</robot>
