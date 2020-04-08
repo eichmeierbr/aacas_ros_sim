@@ -35,7 +35,7 @@
           <uri>model://collision_sphere</uri>
         </include>
       </model>
-      <pose>-5 10 10 0</pose>
+      <pose>0 10 10 0</pose>
       <box>
         <size>0.1 0.1 0.1 </size>
       </box>

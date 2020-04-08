@@ -4,14 +4,15 @@
 
 namespace {
 constexpr const char *kModelSrvName = "/gazebo/get_model_state";
-constexpr double radius = 0.127;
+constexpr double radius = 0.127
+;
 } // namespace
 int main(int argc, char **argv) {
   ros::init(argc, argv, "rviz_collision_publisher");
   ros::NodeHandle nh;
   rviz_visual_tools::RvizVisualToolsPtr visual_tools_;
   visual_tools_.reset(
-      new rviz_visual_tools::RvizVisualTools("/base_footprint", "/obstacles"));
+      new rviz_visual_tools::RvizVisualTools("/world", "/obstacles"));
   ros::ServiceClient gazebo_client =
       nh.serviceClient<gazebo_msgs::GetModelState>(kModelSrvName);
   gazebo_client.waitForExistence();

@@ -11,10 +11,10 @@
 
   <xacro:macro name="base_link">
 
-   <link name="base_footprint"/>
+   <link name="world"/>
 
     <joint name="base_joint" type="fixed">
-      <parent link="base_footprint"/>
+      <parent link="world"/>
       <child link="base_link" />
       <origin xyz="${chassisXoffset} ${chassisYoffset} ${chassisZoffset}" rpy="0 0 0"/>
     </joint>
@@ -22,6 +22,7 @@
     <link name="base_link">
       <visual>
         <xacro:box_geometry />
+        <material name="blue" />
       </visual>
       <collision>
         <xacro:box_geometry />
@@ -30,6 +31,7 @@
     </link>
 
     <xacro:base_gazebo/>
+
   </xacro:macro>
 
 

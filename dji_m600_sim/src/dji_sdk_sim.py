@@ -10,6 +10,9 @@ import numpy as np
 class DJI_simulator:
   def __init__(self, pos_init=np.zeros(3), yaw_init=0):
 
+    ## Last Update Time
+    self.last_update_time_ = rospy.Time.now()
+
     ## State Parameters
     self.pos_ = pos_init
     self.vel_ = np.zeros(3)
@@ -23,27 +26,6 @@ class DJI_simulator:
     self.yaw_des_ = self.yaw_
     self.yaw_rate_des_ = self.yaw_rate_
     self.is_vel_ctrl_ = True
-
-    ## Example Publisher Information
-    self.attitude_pub_name = rospy.get_param('attitude_pub_name')
-    self.imu_pub_name = rospy.get_param('imu_pub_name')
-    self.velocity_pub_name = rospy.get_param('velocity_pub_name')
-    self.position_pub_name = rospy.get_param('position_pub_name')
-    self.height_pub_name = rospy.get_param('height_pub_name')
-
-    self.attitude_pub_ = rospy.Publisher(self.attitude_pub_name, QuaternionStamped, queue_size=10)
-    self.imu_pub_ = rospy.Publisher(self.imu_pub_name, Imu, queue_size=10)
-    self.velocity_pub_ = rospy.Publisher(self.velocity_pub_name, Vector3Stamped, queue_size=10)
-    self.position_pub_ = rospy.Publisher(self.position_pub_name, PointStamped, queue_size=10)
-    self.height_pub_ = rospy.Publisher(self.height_pub_name, Float32, queue_size=10)
-
-
-    ## Subscriber Information
-    self.pos_ctrl_sub_name = rospy.get_param('pos_ctrl_sub_name')
-    self.vel_ctrl_sub_name = rospy.get_param('vel_ctrl_sub_name')
-
-    # rospy.Subscriber(self.pos_ctrl_sub_name, Joy, self.pos_ctrl_callback, queue_size=10)
-    rospy.Subscriber(self.vel_ctrl_sub_name, Joy, self.vel_ctrl_callback, queue_size=10)
 
     ## Position Control Parameters
     A_x = rospy.get_param('pos_A_x')
@@ -76,8 +58,29 @@ class DJI_simulator:
     self.K_yaw_rate_ = rospy.get_param('K_yaw_rate')
 
 
-    ## Last Update Time
-    self.last_update_time_ = rospy.Time.now()
+    ##  Publisher Information
+    self.attitude_pub_name = rospy.get_param('attitude_pub_name')
+    self.imu_pub_name = rospy.get_param('imu_pub_name')
+    self.velocity_pub_name = rospy.get_param('velocity_pub_name')
+    self.position_pub_name = rospy.get_param('position_pub_name')
+    self.height_pub_name = rospy.get_param('height_pub_name')
+
+    self.attitude_pub_ = rospy.Publisher(self.attitude_pub_name, QuaternionStamped, queue_size=10)
+    self.imu_pub_ = rospy.Publisher(self.imu_pub_name, Imu, queue_size=10)
+    self.velocity_pub_ = rospy.Publisher(self.velocity_pub_name, Vector3Stamped, queue_size=10)
+    self.position_pub_ = rospy.Publisher(self.position_pub_name, PointStamped, queue_size=10)
+    self.height_pub_ = rospy.Publisher(self.height_pub_name, Float32, queue_size=10)
+
+
+    ## Subscriber Information
+    self.pos_ctrl_sub_name = rospy.get_param('pos_ctrl_sub_name')
+    self.vel_ctrl_sub_name = rospy.get_param('vel_ctrl_sub_name')
+
+    # rospy.Subscriber(self.pos_ctrl_sub_name, Joy, self.pos_ctrl_callback, queue_size=10)
+    rospy.Subscriber(self.vel_ctrl_sub_name, Joy, self.vel_ctrl_callback, queue_size=1)
+
+
+
 
 
       ## Service Server Information
@@ -129,39 +132,42 @@ class DJI_simulator:
     outQuat = QuaternionStamped()
     outQuat.header = head
     outQuat.quaternion = myQuat
-    self.attitude_pub_.publish(outQuat)
+    # self.attitude_pub_.publish(outQuat)
 
     # Publish IMU
     imuOut = Imu()
     imuOut.header = head
     imuOut.orientation = outQuat
-    imuOut.angular_velocity = Vector3(np.array([0, 0, self.yaw_rate_]))
-    imuOut.linear_acceleration = Vector3(self.acc_)
+    imuOut.angular_velocity = Vector3(x=0.0, y=0.0, z=self.yaw_rate_)
+    imuOut.linear_acceleration = Vector3(x=self.acc_[0], y=self.acc_[1], z=self.acc_[2])
     self.imu_pub_.publish(imuOut)
 
     # Publish Velocity
     velOut = Vector3Stamped()
     velOut.header = head
-    velOut.vector = Vector3(self.vel_)
+    velOut.vector = Vector3(x=self.vel_[0],y=self.vel_[1],z=self.vel_[2])
     self.velocity_pub_.publish(velOut)
 
     # Publish Position
     posStamp = PointStamped()
     posStamp.header = head
-    posStamp.point = Point(self.pos_)
+    posStamp.point = Point(x=self.pos_[0],y=self.pos_[1], z=self.pos_[2])
     self.position_pub_.publish(posStamp)
 
     # Publish Height Above Ground
-    height = Float32()
-    height.data = self.pos_(-1)
+    height = Float32(self.pos_[-1])
+    # height.data = self.pos_(-1)
     self.height_pub_.publish(height)
 
 
   # TODO: Add in smart way to play out the quaternion
   # FOR NOW: Always return orientation straight up
   def getQuat(self):
-    q = np.array([0, 0, 0, 1])
-    quat = Quaternion(q)
+    quat = Quaternion()
+    quat.x = 0
+    quat.y = 0
+    quat.z = 0
+    quat.w = 1
     return quat
 
 
@@ -169,6 +175,8 @@ class DJI_simulator:
     oldTime = self.last_update_time_
     self.last_update_time_ = rospy.Time.now()
     dt = oldTime - self.last_update_time_
+    dt = abs(dt.to_sec())
+    if dt > 1: return
 
     if self.is_vel_ctrl_:
       # calculate errors
