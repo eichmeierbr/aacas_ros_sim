@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 import rospy
 from std_msgs.msg import Float32, Header
-from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, Point, Vector3, Quaternion
+from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, Point, Vector3, Quaternion, PoseStamped
 from sensor_msgs.msg import Imu, Joy
+from nav_msgs.msg import Path
 import numpy as np
 # from PACKAGE_NAME.srv import SERVICE1, SERVICE2, etc
 
@@ -70,6 +71,8 @@ class DJI_simulator:
     self.velocity_pub_ = rospy.Publisher(self.velocity_pub_name, Vector3Stamped, queue_size=10)
     self.position_pub_ = rospy.Publisher(self.position_pub_name, PointStamped, queue_size=10)
     self.height_pub_ = rospy.Publisher(self.height_pub_name, Float32, queue_size=10)
+    self.path_pub = rospy.Publisher('/path', Path, queue_size=10)
+    self.path = Path()
 
 
     ## Subscriber Information
@@ -126,9 +129,10 @@ class DJI_simulator:
   def publishData(self):    
     head = Header()
     head.stamp = rospy.Time.now()
+    head.frame_id = 'world'
 
     # Publish Attitude
-    myQuat = self.getQuat
+    myQuat = self.getQuat()
     outQuat = QuaternionStamped()
     outQuat.header = head
     outQuat.quaternion = myQuat
@@ -137,9 +141,9 @@ class DJI_simulator:
     # Publish IMU
     imuOut = Imu()
     imuOut.header = head
-    imuOut.orientation = outQuat
+    imuOut.orientation = myQuat
     imuOut.angular_velocity = Vector3(x=0.0, y=0.0, z=self.yaw_rate_)
-    imuOut.linear_acceleration = Vector3(x=self.acc_[0], y=self.acc_[1], z=self.acc_[2])
+    imuOut.linear_acceleration = Vector3(x=self.acc_[0], y=self.acc_[1], z=self.acc_[2] + 9.81)
     self.imu_pub_.publish(imuOut)
 
     # Publish Velocity
@@ -151,13 +155,25 @@ class DJI_simulator:
     # Publish Position
     posStamp = PointStamped()
     posStamp.header = head
-    posStamp.point = Point(x=self.pos_[0],y=self.pos_[1], z=self.pos_[2])
+    myPoint = Point(x=self.pos_[0],y=self.pos_[1], z=self.pos_[2])
+    posStamp.point = myPoint
     self.position_pub_.publish(posStamp)
 
     # Publish Height Above Ground
     height = Float32(self.pos_[-1])
     # height.data = self.pos_(-1)
     self.height_pub_.publish(height)
+
+
+    # Publish Path for RVIZ
+    self.path.header = head
+    pose = PoseStamped()
+    pose.header = head
+    pose.pose.position = myPoint
+    pose.pose.orientation = myQuat
+    self.path.poses.append(pose)
+    self.path_pub.publish(self.path)
+
 
 
   # TODO: Add in smart way to play out the quaternion

@@ -21,10 +21,10 @@
     <xacro:property name="chassisIyz" value="0.0"/>
     <xacro:property name="chassisIzz" value="0.0"/>
 
-    <!-- <xacro:property name="chassisScale" value="0.001"/> -->
+    <xacro:property name="chassisScale" value="1"/>
 
-    <!-- <xacro:property name="chassisMeshXoffset" value="-0.125"/>
-    <xacro:property name="chassisMeshYoffset" value="-0.070"/>
-    <xacro:property name="chassisMeshZoffset" value="-0.085"/> -->
+    <xacro:property name="chassisMeshXoffset" value="0.000"/>
+    <xacro:property name="chassisMeshYoffset" value="0.000"/>
+    <xacro:property name="chassisMeshZoffset" value="-0.36"/> 
 
 </robot>
