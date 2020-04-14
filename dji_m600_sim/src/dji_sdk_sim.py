@@ -5,6 +5,8 @@ from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, P
 from sensor_msgs.msg import Imu, Joy
 from nav_msgs.msg import Path
 import numpy as np
+from scipy.spatial.transform import Rotation as R
+
 # from PACKAGE_NAME.srv import SERVICE1, SERVICE2, etc
 
 
@@ -136,7 +138,7 @@ class DJI_simulator:
     outQuat = QuaternionStamped()
     outQuat.header = head
     outQuat.quaternion = myQuat
-    # self.attitude_pub_.publish(outQuat)
+    self.attitude_pub_.publish(outQuat)
 
     # Publish IMU
     imuOut = Imu()
@@ -180,10 +182,14 @@ class DJI_simulator:
   # FOR NOW: Always return orientation straight up
   def getQuat(self):
     quat = Quaternion()
-    quat.x = 0
-    quat.y = 0
-    quat.z = 0
-    quat.w = 1
+
+    r = R.from_euler('xyz', [0, 0, self.yaw_])
+    [x,y,z,w] = r.as_quat()
+
+    quat.x = x
+    quat.y = y
+    quat.z = z
+    quat.w = w
     return quat
 
 
@@ -194,10 +200,11 @@ class DJI_simulator:
     dt = abs(dt.to_sec())
     if dt > 1: return
 
+    # If we are in Velocity Control
     if self.is_vel_ctrl_:
       # calculate errors
       vel_error = self.vel_ - self.vel_des_
-      yaw_rate_error = self.yaw_rate_ - self.yaw_rate_des_
+      yaw_rate_error = -1*(self.yaw_rate_ - self.yaw_rate_des_)
 
       # Calculate New Input
       velDot = (self.A_vel_ - self.B_vel_ @ self.K_vel_) @ vel_error
@@ -208,7 +215,9 @@ class DJI_simulator:
       self.vel_ += velDot * dt
       self.pos_ += self.vel_ * dt
       self.yaw_rate_ += yaw_rate_dot * dt
+      # self.yaw_rate_ = self.yaw_rate_des_
       self.yaw_ += self.yaw_rate_ * dt
+      self.yaw_ = (self.yaw_ + np.pi) % (2 * np.pi) - np.pi
       self.acc_ = velDot
 
     else: # We are in position control

@@ -28,5 +28,5 @@ K_yaw: 1
 vel_B_u: 1
 vel_B_v: 1
 vel_B_w: 1
-K_yaw_rate: 1
+K_yaw_rate: 1.5
 

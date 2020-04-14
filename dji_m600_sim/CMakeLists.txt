@@ -25,8 +25,10 @@ link_directories(
 )
 
 add_executable(rviz_collision_publisher src/rviz_collision_publisher.cpp)
+add_executable(rviz_collision_publisher_no_gazebo src/rviz_collision_publisher_no_gazebo.cpp)
 add_executable(tf_broadcaster src/tf_broadcaster.cpp)
 target_link_libraries(rviz_collision_publisher ${catkin_LIBRARIES})
+target_link_libraries(rviz_collision_publisher_no_gazebo ${catkin_LIBRARIES})
 target_link_libraries(tf_broadcaster ${catkin_LIBRARIES})
 
 install(TARGETS rviz_collision_publisher

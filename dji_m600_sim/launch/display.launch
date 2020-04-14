@@ -20,23 +20,22 @@
   </node>
 
   <!-- Gazebo Launch commands -->
-  <include file="$(find gazebo_ros)/launch/empty_world.launch">
-    <arg name="world_name" value="$(find dji_m600_sim)/worlds/sphere_collision.world"/>
-    <arg name="debug" value="$(arg debug)" />
-    <arg name="gui" value="$(arg gui)" />
-    <arg name="paused" value="$(arg paused)"/>
-    <arg name="use_sim_time" value="$(arg use_sim_time)"/>
-    <arg name="headless" value="$(arg headless)"/>
-  </include>
+  <!-- <include file="$(find gazebo_ros)/launch/empty_world.launch"> -->
+    <!-- <arg name="world_name" value="$(find dji_m600_sim)/worlds/sphere_collision.world"/> -->
+    <!-- <arg name="debug" value="$(arg debug)" /> -->
+    <!-- <arg name="gui" value="$(arg gui)" /> -->
+    <!-- <arg name="paused" value="$(arg paused)"/> -->
+    <!-- <arg name="use_sim_time" value="$(arg use_sim_time)"/> -->
+    <!-- <arg name="headless" value="$(arg headless)"/> -->
+  <!-- </include> -->
 
-  <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" args="-unpause -urdf -model robot -param robot_description" respawn="false" output="screen" />
+  <!-- <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" args="-unpause -urdf -model robot -param robot_description" respawn="false" output="screen" /> -->
 
 
   <!-- RVIZ Launch Commands -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
-  <rosparam param="nr_of_obstacles">1</rosparam>
-  <arg name="node_start_delay" default="10.0" />  
-  <node pkg="dji_m600_sim" type="rviz_collision_publisher" name="rviz_collision_publisher" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' " output="screen"/>
+  <arg name="node_start_delay" default="5.0" />  
+  <node pkg="dji_m600_sim" type="rviz_collision_publisher_no_gazebo" name="rviz_collision_publisher" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' " output="screen"/>
 
 
 </launch>

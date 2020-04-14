@@ -1,0 +1,12 @@
+# Fake Detector Parameters
+object_position_noise: 0.3
+object_velocity_noise: 0.3
+object_detection_rate: 0.7
+object_detection_dist: 10.0
+
+# Obstacle position parameters
+ob_start_x: 0.0
+ob_start_y: 10.0
+ob_start_z: 10.0
+
+nr_of_obstacles: 1

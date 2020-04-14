@@ -13,28 +13,51 @@ class Objects:
         self.vel = vel
         self.dist = dist
 
+        self.pos_noise = rospy.get_param('object_position_noise')
+        self.vel_noise = rospy.get_param('object_velocity_noise')
+        self.detect_rate = rospy.get_param('object_detection_rate')
+        self.detect_range = rospy.get_param('object_detection_dist')
+
+    def get_position(self):
+        return self.pos + np.random.randn(3) * self.pos_noise
+
+    def get_velocity(self):
+        return self.vel + np.random.randn(3) * self.vel_noise
+
+    def fake_detection(self):
+        outObj = Objects()
+        outObj.pos = self.get_position()
+        outObj.vel = self.get_velocity()
+        outObj.dist = self.detect_rate
+        outObj.pos_noise = self.pos_noise
+        outObj.vel_noise = self.vel_noise
+        outObj.detect_rate = self.detect_rate
+        outObj.detect_range = self.detect_range
+        return outObj
+    
+
 
 class vectFieldController:
 
-    def __init__(self, safe = 5.5, detects = []):
-        self.v_max = 5
-        self.detections = detects
+    def __init__(self, waypoints = [[0,0,0]]):
+        self.v_max =  rospy.get_param('maximum_velocity')
+        self.detections = []
 
         # Waypoint params
-        self.waypoints = np.array([[0, 0, 10], [0, 20, 10]])
+        self.waypoints = waypoints
         self.goalPt = 0
         self.goal = self.waypoints[self.goalPt]
-        self.switch_dist = 1
+        self.switch_dist =  rospy.get_param('switch_waypoint_distance')
 
         # Orbit params
         self.freq = -1 # Orbit direction (+: CW, -: ccw)
-        self.safe_dist = safe
-        self.rad = self.safe_dist - 1 # Radius of orbit
-        self.k_conv = .01 # Gain to converge to orbit
-        self.K_theta = 2.0
+        self.safe_dist = rospy.get_param('safe_distance')
+        self.rad = self.safe_dist # Radius of orbit
+        self.k_conv =  rospy.get_param('orbit_k_conv') # Gain to converge to orbit
+        self.K_theta =  rospy.get_param('heading_k_theta')
 
         # Go to Goal Parameters
-        self.g2g_sig = 1.5
+        self.g2g_sig =  rospy.get_param('g2g_sigma')
         self.g2g_sig_sq = self.g2g_sig**2
 
         # state Information
@@ -74,7 +97,9 @@ class vectFieldController:
     ## TODO: Implement in 3D
     ## For Now: 2D Implementation
     def getXdes(self):
-        velDes = np.zeros(4)      
+        velDes = np.zeros(4)
+
+        if len(self.waypoints) == 0: return velDes
         
         # Check if we are close to an object
         [closeObject, move] = self.getCloseObject()
@@ -121,13 +146,16 @@ class vectFieldController:
         T_vo = self.transformToGoalCoords()    
         
         for i in range(len(self.detections)):
-            self.detections[i].dist = np.linalg.norm(self.pos-self.detections[i].pos)
-            obst = self.detections[i]
-            pos = np.array([obst.pos[0], obst.pos[1], 1])
-            obst_trans = T_vo @ pos
-            if all([obst.dist < closeObject.dist, obst_trans[1] > 0]):
-                closeObject = obst
-                move = True
+            obst = self.detections[i].fake_detection() ########### Rework fake detection with detection node
+            obs_pos = obst.pos
+            obst.dist = np.linalg.norm(self.pos- obs_pos)
+            
+            if obst.dist < obst.detect_range and obst.detect_rate > np.random.uniform():
+                pos = np.array([obs_pos[0], obs_pos[1], 1])
+                obst_trans = T_vo @ pos
+                if all([obst.dist < closeObject.dist, obst_trans[1] > 0]):
+                    closeObject = obst
+                    move = True
         return [closeObject, move]
 
 
@@ -142,11 +170,12 @@ class vectFieldController:
 
 
     def headingControl(self, velDes):
-        # vel_angle = wrapToPi(atan2(velDes(2), velDes(1)));
-        # angleDiff = vel_angle - self.yaw;
-        # w_d = self.K_theta * angleDiff;
+        vel_angle = np.arctan2(velDes[1], velDes[0])
+        angleDiff = vel_angle - self.yaw
+        angleDiff = (angleDiff + np.pi) % (2 * np.pi) - np.pi
+        w_d = self.K_theta * angleDiff
 
-        w_d = 0
+        # w_d = vel_angle
         return w_d
 
 
@@ -165,7 +194,7 @@ class vectFieldController:
         trans_pos = T_vo @ [obst_pos[0], obst_pos[1], 1]
 
         # Check if object is stationary
-        if np.linalg.norm(trans_vel) > 0.1:
+        if np.linalg.norm(trans_vel) > 50:
             if(trans_vel[0] >= 0):          # If obstacle is moving right
                 self.freq = 1               # Orbit CW
             else:                           # If obstacle is moving left
@@ -240,11 +269,20 @@ if __name__ == '__main__':
 
     ## TODO implement subscription to obstacle locations
     ## FOR NOW: Hard code  fake obstacle detections
-    ob_start = np.array([0,10,10])
+    obs_x = rospy.get_param('ob_start_x')
+    obs_y = rospy.get_param('ob_start_y')
+    obs_z = rospy.get_param('ob_start_z')
+    ob_start = np.array([obs_x, obs_y, obs_z])
     start_pos = np.array([0,0,0])
     obstacle = Objects(pos=ob_start, dist = np.linalg.norm(ob_start-start_pos))
     detections = [obstacle]
-    field = vectFieldController(detects=detections)
+
+    # Launch Node
+    field = vectFieldController()
+    field.detections = detections
+    field.waypoints  = np.array([[0, 0, 10], 
+                                 [0, 20, 10]])
+    field.goal = field.waypoints[0]
 
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
