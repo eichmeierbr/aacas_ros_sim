@@ -10,6 +10,19 @@ find_package(catkin REQUIRED COMPONENTS
   robot_state_publisher
   gazebo_ros
   rviz_visual_tools
+  message_generation
+)
+
+
+add_service_files(
+  DIRECTORY srv
+  FILES
+  DroneTaskControl.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
 )
 
 find_package(gazebo REQUIRED)
@@ -23,6 +36,8 @@ include_directories(
 link_directories(
 	${GAZEBO_LIRARY_DIRS} ${catkin_LIBRARY_DIRS}
 )
+
+
 
 add_executable(rviz_collision_publisher src/rviz_collision_publisher.cpp)
 add_executable(rviz_collision_publisher_no_gazebo src/rviz_collision_publisher_no_gazebo.cpp)

@@ -30,3 +30,13 @@ vel_B_v: 1
 vel_B_w: 1
 K_yaw_rate: 1.5
 
+## Takeoff and landing  Service parameters
+takeoff_land_service_name: 'dji_sim/drone_task_control'
+takeoff_altitude:     10
+takeoff_vel_max:      1.5
+takeoff_pos_error_k:  1
+
+landing_altitude:     0
+landing_vel_max:      1
+landing_pos_error_k:  0.75
+

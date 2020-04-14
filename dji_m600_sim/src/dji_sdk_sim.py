@@ -6,6 +6,7 @@ from sensor_msgs.msg import Imu, Joy
 from nav_msgs.msg import Path
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+from dji_m600_sim.srv import DroneTaskControl, DroneTaskControlResponse
 
 # from PACKAGE_NAME.srv import SERVICE1, SERVICE2, etc
 
@@ -39,6 +40,8 @@ class DJI_simulator:
     B_w = rospy.get_param('pos_B_w')
     K_pos = rospy.get_param('pos_K_pos_coeff')
     K_vel = rospy.get_param('pos_K_vel_coeff')
+    self.v_max =  rospy.get_param('maximum_velocity')
+
 
 
     self.A_pos_ = np.zeros([6,6])
@@ -77,6 +80,7 @@ class DJI_simulator:
     self.path = Path()
 
 
+
     ## Subscriber Information
     self.pos_ctrl_sub_name = rospy.get_param('pos_ctrl_sub_name')
     self.vel_ctrl_sub_name = rospy.get_param('vel_ctrl_sub_name')
@@ -84,27 +88,12 @@ class DJI_simulator:
     # rospy.Subscriber(self.pos_ctrl_sub_name, Joy, self.pos_ctrl_callback, queue_size=10)
     rospy.Subscriber(self.vel_ctrl_sub_name, Joy, self.vel_ctrl_callback, queue_size=1)
 
+     ## Service Server Information
+    takeoff_land_service_name = rospy.get_param('takeoff_land_service_name')
+
+    self.task_ctrl_service_ = rospy.Service(takeoff_land_service_name, DroneTaskControl, self.DroneTaskControl)
 
 
-
-
-      ## Service Server Information
-      # self.serv_ = rospy.Service(SERVICE_NAME, SERVICE_TYPE, SERVICE_CALLBACK)
-
-
-
-  ## Service Client Information
-  # def server_client
-  #     rospy.wait_for_service(SERVICE_NAME)
-  #     try:
-
-  #         service_input = []
-
-  #         service_var = rospy.ServiceProxy(SERVICE_NAME, SERVICE_TYPE)
-  #         service_response = service_var(service_input)
-  #         return service_response.data
-  #     except rospy.ServiceException, e:
-  #         print "Service call failed: %s"%e
 
 
 # TODO Implement Position Control
@@ -222,12 +211,17 @@ class DJI_simulator:
 
     else: # We are in position control
       # calculate errors
-      pos_error = self.pos_ - self.pos_des_
+      pos_error = np.zeros(6)
+      pos_error[:3] = self.pos_ - self.pos_des_
       yaw_error = self.yaw_ - self.yaw_des_
+
 
       # Calculate New Input
       posDot = (self.A_pos_ - self.B_pos_ @ self.K_pos_) @ pos_error
       yawDot = self.K_yaw_ * yaw_error
+
+      if np.linalg.norm(posDot) > self.v_max:
+        posDot *= self.v_max/np.linalg.norm(posDot)
 
       # TODO: Update State using Integration (ODE45)
       # FOR NOW: Euler Integration
@@ -240,6 +234,56 @@ class DJI_simulator:
 
     self.publishData()
 
+    
+
+# /dji_sdk/drone_task_control 
+  def DroneTaskControl(self, req):
+    if req.task == 4:
+      des_altitude = rospy.get_param('takeoff_altitude')
+      v_max_copy = self.v_max
+      self.v_max = rospy.get_param('takeoff_vel_max')
+      k_pos_error = rospy.get_param('takeoff_pos_error_k')
+      self.is_vel_ctrl_ = True
+      while abs(des_altitude - self.pos_[2]) > 0.5 or np.linalg.norm(self.vel_) > 0.3:
+        self.yaw_des_ = self.yaw_
+        self.pos_des_ = [self.pos_[0], self.pos_[1], des_altitude]
+
+        # Calculate velocity signal using p control
+        self.vel_des_ = k_pos_error * (self.pos_des_ - self.pos_)
+        self.yaw_rate_des_ = 0
+
+        # Normalize velocity command
+        if np.linalg.norm(self.vel_des_) > self.v_max:
+          self.vel_des_ *= self.v_max/np.linalg.norm(self.vel_des_)
+
+
+        self.performMotion()
+      self.v_max = v_max_copy
+      return DroneTaskControlResponse(True,4,4,3)
+
+    if req.task == 6 or req.task == 1:
+      des_altitude = rospy.get_param('landing_altitude')
+
+      v_max_copy = self.v_max
+      self.v_max = rospy.get_param('landing_vel_max')
+      k_pos_error = rospy.get_param('landing_pos_error_k')
+      self.is_vel_ctrl_ = True
+      while abs(des_altitude - self.pos_[2]) > 0.5 or np.linalg.norm(self.vel_) > 0.3:
+        self.yaw_des_ = self.yaw_
+        self.pos_des_ = [self.pos_[0], self.pos_[1], des_altitude]
+
+        # Calculate velocity signal using p control
+        self.vel_des_ = k_pos_error * (self.pos_des_ - self.pos_)
+        self.yaw_rate_des_ = 0
+
+        # Normalize velocity command
+        if np.linalg.norm(self.vel_des_) > self.v_max:
+          self.vel_des_ *= self.v_max/np.linalg.norm(self.vel_des_)
+
+
+        self.performMotion()
+      self.v_max = v_max_copy
+      return DroneTaskControlResponse(True,4,4,3)
 
 
     

@@ -5,6 +5,8 @@ import numpy as np
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, Point, Vector3, Quaternion
 from scipy.spatial.transform import Rotation as R
+from dji_m600_sim.srv import DroneTaskControl, DroneTaskControlResponse
+
 
 
 class Objects:
@@ -281,8 +283,16 @@ if __name__ == '__main__':
     field = vectFieldController()
     field.detections = detections
     field.waypoints  = np.array([[0, 0, 10], 
-                                 [0, 20, 10]])
+                                 [20, 0, 10]])
     field.goal = field.waypoints[0]
+
+    ########### Takeoff Controll ###############
+    takeoff_srv_name = rospy.get_param('takeoff_land_service_name')
+    rospy.wait_for_service(takeoff_srv_name)
+    takeoff_service = rospy.ServiceProxy(takeoff_srv_name, DroneTaskControl)
+    resp1 = takeoff_service(4)
+    ########### Takeoff Controll ###############
+
 
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
