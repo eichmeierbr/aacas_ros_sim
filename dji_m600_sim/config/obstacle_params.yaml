@@ -1,6 +1,8 @@
+query_detections_service: 'query_obstacle_detections'
+
 # Fake Detector Parameters
-object_position_noise: 0.3
-object_velocity_noise: 0.3
+object_position_noise: 0.8
+object_velocity_noise: 0.8
 object_detection_rate: 0.7
 object_detection_dist: 10.0
 

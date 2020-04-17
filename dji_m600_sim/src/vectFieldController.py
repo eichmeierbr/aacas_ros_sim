@@ -5,7 +5,8 @@ import numpy as np
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, Point, Vector3, Quaternion
 from scipy.spatial.transform import Rotation as R
-from dji_m600_sim.srv import DroneTaskControl, DroneTaskControlResponse
+from dji_m600_sim.srv import DroneTaskControl, QueryDetections
+from dji_m600_sim.msg import ObstacleDetection
 
 
 
@@ -14,30 +15,7 @@ class Objects:
         self.pos = pos
         self.vel = vel
         self.dist = dist
-
-        self.pos_noise = rospy.get_param('object_position_noise')
-        self.vel_noise = rospy.get_param('object_velocity_noise')
-        self.detect_rate = rospy.get_param('object_detection_rate')
-        self.detect_range = rospy.get_param('object_detection_dist')
-
-    def get_position(self):
-        return self.pos + np.random.randn(3) * self.pos_noise
-
-    def get_velocity(self):
-        return self.vel + np.random.randn(3) * self.vel_noise
-
-    def fake_detection(self):
-        outObj = Objects()
-        outObj.pos = self.get_position()
-        outObj.vel = self.get_velocity()
-        outObj.dist = self.detect_rate
-        outObj.pos_noise = self.pos_noise
-        outObj.vel_noise = self.vel_noise
-        outObj.detect_rate = self.detect_rate
-        outObj.detect_range = self.detect_range
-        return outObj
-    
-
+  
 
 class vectFieldController:
 
@@ -57,6 +35,8 @@ class vectFieldController:
         self.rad = self.safe_dist # Radius of orbit
         self.k_conv =  rospy.get_param('orbit_k_conv') # Gain to converge to orbit
         self.K_theta =  rospy.get_param('heading_k_theta')
+        self.last_orbit_change_ = rospy.Time.now()
+        self.change_orbit_wait_ = rospy.get_param('orbit_change_wait')
 
         # Go to Goal Parameters
         self.g2g_sig =  rospy.get_param('g2g_sigma')
@@ -67,23 +47,31 @@ class vectFieldController:
         self.vel = np.zeros(3)
         self.yaw = 0
         self.yaw_rate = 0
+        self.quat = Quaternion()
+        self.pos_pt = Point()
 
         # Publisher Information
         vel_ctrl_pub_name = rospy.get_param('vel_ctrl_sub_name')
         self.vel_ctrl_pub_ = rospy.Publisher(vel_ctrl_pub_name, Joy, queue_size=10)
 
         # Subscriber Information
-        position_sub_name = rospy.get_param('position_pub_name')
-        velocity_sub_name = rospy.get_param('velocity_pub_name')
-        attitude_sub_name = rospy.get_param('attitude_pub_name')
+        rospy.Subscriber(rospy.get_param('position_pub_name'), PointStamped,      self.position_callback, queue_size=1)
+        rospy.Subscriber(rospy.get_param('velocity_pub_name'), Vector3Stamped,    self.velocity_callback, queue_size=1)
+        rospy.Subscriber(rospy.get_param('attitude_pub_name'), QuaternionStamped, self.attitude_callback, queue_size=1)
 
-        rospy.Subscriber(position_sub_name, PointStamped,      self.position_callback, queue_size=1)
-        rospy.Subscriber(velocity_sub_name, Vector3Stamped,    self.velocity_callback, queue_size=1)
-        rospy.Subscriber(attitude_sub_name, QuaternionStamped, self.attitude_callback, queue_size=1)
+        # Service Information
+        query_detections_name = rospy.get_param('query_detections_service')
+        rospy.wait_for_service(query_detections_name)
+        self.query_detections_service_ = rospy.ServiceProxy(query_detections_name, QueryDetections)
+
+        takeoff_service_name = rospy.get_param('takeoff_land_service_name')
+        rospy.wait_for_service(takeoff_service_name)
+        self.takeoff_service = rospy.ServiceProxy(takeoff_service_name, DroneTaskControl)
 
 
     def position_callback(self, msg):
         pt = msg.point
+        self.pos_pt = pt
         self.pos = np.array([pt.x, pt.y, pt.z])
 
     def velocity_callback(self, msg):
@@ -92,6 +80,7 @@ class vectFieldController:
 
     def attitude_callback(self, msg):
         q = msg.quaternion
+        self.quat = q
         r = R.from_quat([q.x, q.y, q.z, q.w])
         [roll, pitch, yaw] = r.as_euler('xyz')
         self.yaw = yaw
@@ -107,9 +96,10 @@ class vectFieldController:
         [closeObject, move] = self.getCloseObject()
         
         # If close to object, orbit
-        if all([move, closeObject.dist < self.safe_dist]):
-            self.decideOrbitDirection(closeObject)
-            velDes[:3] = self.getOrbit(closeObject.pos)    
+        if all([move, closeObject.distance < self.safe_dist]):
+            if self.change_orbit_wait_ < (rospy.Time.now() - self.last_orbit_change_).to_sec():
+                self.decideOrbitDirection(closeObject)
+            velDes[:3] = self.getOrbit([closeObject.position.x,closeObject.position.y,closeObject.position.z])    
 
         else: # Go to goal 
             velDes[:3] = self.goToGoalField()
@@ -128,6 +118,9 @@ class vectFieldController:
         # Check if we have reached the next waypoint. If so, update
         self.changeGoalPt()
         
+        # Update Detections
+        self.updateDetections()
+
         # Get velocity vector
         velDes = self.getXdes() 
         
@@ -141,23 +134,22 @@ class vectFieldController:
     ## TODO: Implement in 3D
     ## For Now: 2D Implementation
     def getCloseObject(self):
-        closeObject = Objects()
+        closeObject = ObstacleDetection()
+        closeObject.distance = np.inf
         move = False
 
         # Perform transformed coordinates
         T_vo = self.transformToGoalCoords()    
         
-        for i in range(len(self.detections)):
-            obst = self.detections[i].fake_detection() ########### Rework fake detection with detection node
-            obs_pos = obst.pos
-            obst.dist = np.linalg.norm(self.pos- obs_pos)
+        for obst in self.detections:
+            # obst = self.detections[i].fake_detection() ########### Rework fake detection with detection node
+            obs_pos = np.array([obst.position.x, obst.position.y, obst.position.z])
             
-            if obst.dist < obst.detect_range and obst.detect_rate > np.random.uniform():
-                pos = np.array([obs_pos[0], obs_pos[1], 1])
-                obst_trans = T_vo @ pos
-                if all([obst.dist < closeObject.dist, obst_trans[1] > 0]):
-                    closeObject = obst
-                    move = True
+            pos = np.array([obs_pos[0], obs_pos[1], 1])
+            obst_trans = T_vo @ pos
+            if all([obst.distance < closeObject.distance, obst_trans[1] > 0]):
+                closeObject = obst
+                move = True
         return [closeObject, move]
 
 
@@ -181,12 +173,12 @@ class vectFieldController:
         return w_d
 
 
-    def decideOrbitDirection(self, closeObst):
+    def decideOrbitDirection(self, ob):
         # Note: All directions are assuming the vehicle is looking
         # straight at the goal
-        
-        obst_vel = closeObst.vel
-        obst_pos = closeObst.pos
+
+        obst_vel = np.array([ob.velocity.x, ob.velocity.y, ob.velocity.z])
+        obst_pos = np.array([ob.position.x, ob.position.y, ob.position.z])
         
         
         # Perform transformed coordinates
@@ -208,6 +200,7 @@ class vectFieldController:
                 self.freq = 1       # Orbit CW
             else:                   # If object is to the left
                 self.freq = -1      # Orbit CCW
+        self.last_orbit_change_ = rospy.Time.now()
 
 
     ## TODO: Implement in 3D
@@ -265,17 +258,25 @@ class vectFieldController:
         return T_vo
 
 
+    def updateDetections(self):
+        in_detections = self.query_detections_service_(vehicle_position=self.pos_pt, attitude=self.quat)
+        self.detections = in_detections.detection_array.detections
+
+
 if __name__ == '__main__': 
   try:
     rospy.init_node('vectFieldController')
 
     ## TODO implement subscription to obstacle locations
     ## FOR NOW: Hard code  fake obstacle detections
+
+    start_pos = np.array([0,0,0])
+
     obs_x = rospy.get_param('ob_start_x')
     obs_y = rospy.get_param('ob_start_y')
     obs_z = rospy.get_param('ob_start_z')
     ob_start = np.array([obs_x, obs_y, obs_z])
-    start_pos = np.array([0,0,0])
+
     obstacle = Objects(pos=ob_start, dist = np.linalg.norm(ob_start-start_pos))
     detections = [obstacle]
 
@@ -287,10 +288,8 @@ if __name__ == '__main__':
     field.goal = field.waypoints[0]
 
     ########### Takeoff Controll ###############
-    takeoff_srv_name = rospy.get_param('takeoff_land_service_name')
-    rospy.wait_for_service(takeoff_srv_name)
-    takeoff_service = rospy.ServiceProxy(takeoff_srv_name, DroneTaskControl)
-    resp1 = takeoff_service(4)
+
+    resp1 = field.takeoff_service(4)
     ########### Takeoff Controll ###############
 
 

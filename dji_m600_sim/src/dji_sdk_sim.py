@@ -89,9 +89,7 @@ class DJI_simulator:
     rospy.Subscriber(self.vel_ctrl_sub_name, Joy, self.vel_ctrl_callback, queue_size=1)
 
      ## Service Server Information
-    takeoff_land_service_name = rospy.get_param('takeoff_land_service_name')
-
-    self.task_ctrl_service_ = rospy.Service(takeoff_land_service_name, DroneTaskControl, self.DroneTaskControl)
+    self.task_ctrl_service_ = rospy.Service(rospy.get_param('takeoff_land_service_name'), DroneTaskControl, self.DroneTaskControl)
 
 
 
