@@ -22,10 +22,11 @@ class DetectionSimulation:
   def updateDetections(self, pos=np.zeros(3), quat=[0,0,0,1]):
     sim_detections = ObstacleDetectionArray()
     for detection in self.true_detections_:
-      if detection.detect_rate > np.random.uniform() and detection.dist < detect.detect_range:
-        obj = detection.fake_detection()
-        dist = np.linalg.norm(pos - np.array([obj.pos[0], obj.pos[1], obj.pos[2]]))
+      obj = detection.fake_detection()
+      dist = np.linalg.norm(pos - np.array([obj.pos[0], obj.pos[1], obj.pos[2]]))
 
+      if detection.detect_rate > np.random.uniform() and dist < detection.detect_range:
+        # Prepare values for output
         out_detection = ObstacleDetection()
         out_detection.type = detection.class_name
         out_detection.position = Point(obj.pos[0], obj.pos[1], obj.pos[2]) 
