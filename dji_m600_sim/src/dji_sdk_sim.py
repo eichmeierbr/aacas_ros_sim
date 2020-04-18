@@ -78,6 +78,7 @@ class DJI_simulator:
     self.height_pub_ = rospy.Publisher(self.height_pub_name, Float32, queue_size=10)
     self.path_pub = rospy.Publisher('/path', Path, queue_size=10)
     self.path = Path()
+    self.path_z_offset = rospy.get_param('transform_z_offset')
 
 
 
@@ -159,6 +160,7 @@ class DJI_simulator:
     pose = PoseStamped()
     pose.header = head
     pose.pose.position = myPoint
+    # pose.pose.position.z += self.path_z_offset
     pose.pose.orientation = myQuat
     self.path.poses.append(pose)
     self.path_pub.publish(self.path)
@@ -236,55 +238,55 @@ class DJI_simulator:
 
 # /dji_sdk/drone_task_control 
   def DroneTaskControl(self, req):
-    if req.task == 4:
+
+    # Prepare Parameters
+    self.is_vel_ctrl_ = True
+    self.yaw_rate_des_ = 0
+    v_max_copy = self.v_max
+    self.is_vel_ctrl_ = True
+    self.yaw_des_ = self.yaw_
+    is_takeoff = req.task ==4
+    if req.task == 4: 
       des_altitude = rospy.get_param('takeoff_altitude')
-      v_max_copy = self.v_max
-      self.v_max = rospy.get_param('takeoff_vel_max')
-      k_pos_error = rospy.get_param('takeoff_pos_error_k')
-      self.is_vel_ctrl_ = True
-      while abs(des_altitude - self.pos_[2]) > 0.5 or np.linalg.norm(self.vel_) > 0.3:
-        self.yaw_des_ = self.yaw_
-        self.pos_des_ = [self.pos_[0], self.pos_[1], des_altitude]
-
-        # Calculate velocity signal using p control
-        self.vel_des_ = k_pos_error * (self.pos_des_ - self.pos_)
-        self.yaw_rate_des_ = 0
-
-        # Normalize velocity command
-        if np.linalg.norm(self.vel_des_) > self.v_max:
-          self.vel_des_ *= self.v_max/np.linalg.norm(self.vel_des_)
-
-
-        self.performMotion()
-      self.v_max = v_max_copy
-      return DroneTaskControlResponse(True,4,4,3)
-
-    if req.task == 6 or req.task == 1:
+    else: 
       des_altitude = rospy.get_param('landing_altitude')
 
-      v_max_copy = self.v_max
+    # Return to above origin
+    if req.task == 1:
+      self.pos_des_ = [0, 0, des_altitude]
+      self.ascend_descend_subroutine()
+    
+    # Ascend/Descend
+    self.pos_des_ = [self.pos_[0], self.pos_[1], des_altitude]
+    self.ascend_descend_subroutine(is_takeoff = is_takeoff)
+
+    self.v_max = v_max_copy
+    return DroneTaskControlResponse(True,4,4,3)
+
+
+  def ascend_descend_subroutine(self, is_takeoff = False):
+
+    # Set control paramaters for takeoff
+    if is_takeoff:
+      self.v_max = rospy.get_param('takeoff_vel_max')
+      k_pos_error = rospy.get_param('takeoff_pos_error_k')
+
+    # Set control parameters for landing
+    if not is_takeoff:
       self.v_max = rospy.get_param('landing_vel_max')
       k_pos_error = rospy.get_param('landing_pos_error_k')
-      self.is_vel_ctrl_ = True
-      while abs(des_altitude - self.pos_[2]) > 0.5 or np.linalg.norm(self.vel_) > 0.3:
-        self.yaw_des_ = self.yaw_
-        self.pos_des_ = [self.pos_[0], self.pos_[1], des_altitude]
 
-        # Calculate velocity signal using p control
-        self.vel_des_ = k_pos_error * (self.pos_des_ - self.pos_)
-        self.yaw_rate_des_ = 0
+    # Perform flight control
+    while np.linalg.norm(self.pos_des_ - self.pos_) > 0.2 or np.linalg.norm(self.vel_) > 0.1:
+      # Calculate velocity signal using p control
+      self.vel_des_ = k_pos_error * (self.pos_des_ - self.pos_)
+      self.yaw_rate_des_ = 0
 
-        # Normalize velocity command
-        if np.linalg.norm(self.vel_des_) > self.v_max:
-          self.vel_des_ *= self.v_max/np.linalg.norm(self.vel_des_)
+      # Normalize velocity command
+      if np.linalg.norm(self.vel_des_) > self.v_max:
+        self.vel_des_ *= self.v_max/np.linalg.norm(self.vel_des_)
 
-
-        self.performMotion()
-      self.v_max = v_max_copy
-      return DroneTaskControlResponse(True,4,4,3)
-
-
-    
+      self.performMotion()
 
 
 if __name__ == '__main__': 

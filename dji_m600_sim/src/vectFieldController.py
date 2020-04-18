@@ -267,36 +267,28 @@ if __name__ == '__main__':
   try:
     rospy.init_node('vectFieldController')
 
-    ## TODO implement subscription to obstacle locations
-    ## FOR NOW: Hard code  fake obstacle detections
-
-    start_pos = np.array([0,0,0])
-
-    obs_x = rospy.get_param('ob_start_x')
-    obs_y = rospy.get_param('ob_start_y')
-    obs_z = rospy.get_param('ob_start_z')
-    ob_start = np.array([obs_x, obs_y, obs_z])
-
-    obstacle = Objects(pos=ob_start, dist = np.linalg.norm(ob_start-start_pos))
-    detections = [obstacle]
+    start_pos = np.array([0,0,rospy.get_param('transform_z_offset')])
 
     # Launch Node
     field = vectFieldController()
-    field.detections = detections
     field.waypoints  = np.array([[0, 0, 10], 
                                  [20, 0, 10]])
-    field.goal = field.waypoints[0]
+    field.goal = field.waypoints[0] 
 
     ########### Takeoff Controll ###############
-
     resp1 = field.takeoff_service(4)
     ########### Takeoff Controll ###############
 
 
+    startTime = rospy.Time.now()
     rate = rospy.Rate(10) # 10hz
-    while not rospy.is_shutdown():
+    while (rospy.Time.now() - startTime).to_sec() < 10:
         field.move()
         rate.sleep()
+
+    ########### Takeoff Controll ###############
+    resp1 = field.takeoff_service(6)
+    ########### Takeoff Controll ###############
 
     rospy.spin()
     

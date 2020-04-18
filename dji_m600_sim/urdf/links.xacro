@@ -12,27 +12,36 @@
   <xacro:macro name="base_link">
 
    <link name="world"/>
+   <link name="base_link"/>
 
-    <joint name="base_joint" type="fixed">
+    <joint name="vehicle_center_joint" type="fixed">
       <parent link="world"/>
-      <child link="base_link" />
+      <child link="vehicle_center_link" />
       <origin xyz="${chassisXoffset} ${chassisYoffset} ${chassisZoffset}" rpy="0 0 0"/>
     </joint>
 
-    <link name="base_link">
+
+    <link name="vehicle_center_link">
       <visual>
-        <!-- <geometry> -->
-          <!-- <mesh filename="file://$(find dji_m600_sim)/meshes/m600.dae" scale="${chassisScale} ${chassisScale} ${chassisScale}"/> -->
-        <!-- </geometry> -->
-        <!-- <origin rpy="0 0 0" xyz="${chassisMeshXoffset} ${chassisMeshYoffset} ${chassisMeshZoffset}" /> -->
-        <xacro:box_geometry />
-        <material name="blue" />
+        <geometry>
+          <mesh filename="file://$(find dji_m600_sim)/meshes/m600.dae" scale="${chassisScale} ${chassisScale} ${chassisScale}"/>
+        </geometry>
+        <origin rpy="0 0 0" xyz="${chassisMeshXoffset} ${chassisMeshYoffset} ${chassisMeshZoffset}" />
+        <!-- <xacro:box_geometry /> -->
+        <!-- <material name="blue" /> -->
       </visual>
       <collision>
         <xacro:box_geometry />
       </collision>
       <xacro:box_inertial/>
     </link>
+
+    <joint name="vehicle_ground_joint" type="fixed">
+      <parent link="vehicle_center_link"/>
+      <child link="base_link" />
+      <origin xyz="0 0 -${chassisZoffset}" rpy="0 0 0"/>
+    </joint>
+
 
     <xacro:base_gazebo/>
 

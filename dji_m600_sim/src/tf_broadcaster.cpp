@@ -3,6 +3,7 @@
 #include <string>
 
 geometry_msgs::Quaternion geom_quat;
+float transform_z_offset;
 
 void attitudeCallback(const geometry_msgs::QuaternionStamped& msg){
   geom_quat = msg.quaternion;
@@ -22,7 +23,7 @@ void poseCallback(const geometry_msgs::PointStamped& msg){
   q.normalize();
   transform.setRotation(q);
 
-  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "base_link"));
+  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "vehicle_center_link"));
 }
 
 int main(int argc, char** argv){
@@ -34,6 +35,7 @@ int main(int argc, char** argv){
 
   node.getParam("position_pub_name", position_topic);
   node.getParam("attitude_pub_name", attitude_topic);
+  node.getParam("transform_z_offset", transform_z_offset);
 
   ros::Subscriber pos_sub = node.subscribe(position_topic, 10, &poseCallback);
   ros::Subscriber att_sub = node.subscribe(attitude_topic, 10, &attitudeCallback);
