@@ -7,7 +7,7 @@ safe_distance:            5
 orbit_freq:               -1
 orbit_k_conv:             0.01
 heading_k_theta:          1
-orbit_change_wait:        3
+orbit_change_wait:        4
 
 # Go to Goal Parameters
 g2g_sigma:                1.5

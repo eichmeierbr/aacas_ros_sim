@@ -275,6 +275,8 @@ if __name__ == '__main__':
                                  [20, 0, 10]])
     field.goal = field.waypoints[0] 
 
+    rospy.sleep(2)
+
     ########### Takeoff Controll ###############
     resp1 = field.takeoff_service(4)
     ########### Takeoff Controll ###############
@@ -282,7 +284,7 @@ if __name__ == '__main__':
 
     startTime = rospy.Time.now()
     rate = rospy.Rate(10) # 10hz
-    while (rospy.Time.now() - startTime).to_sec() < 10:
+    while (rospy.Time.now() - startTime).to_sec() < 600:
         field.move()
         rate.sleep()
 
