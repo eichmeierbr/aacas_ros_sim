@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
+  nav_msgs
   tf
   roscpp
   robot_state_publisher

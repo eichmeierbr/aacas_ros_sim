@@ -76,10 +76,6 @@ class DJI_simulator:
     self.velocity_pub_ = rospy.Publisher(self.velocity_pub_name, Vector3Stamped, queue_size=10)
     self.position_pub_ = rospy.Publisher(self.position_pub_name, PointStamped, queue_size=10)
     self.height_pub_ = rospy.Publisher(self.height_pub_name, Float32, queue_size=10)
-    self.path_pub = rospy.Publisher('/path', Path, queue_size=10)
-    self.path = Path()
-    self.path_z_offset = rospy.get_param('transform_z_offset')
-
 
 
     ## Subscriber Information
@@ -153,17 +149,6 @@ class DJI_simulator:
     height = Float32(self.pos_[-1])
     # height.data = self.pos_(-1)
     self.height_pub_.publish(height)
-
-
-    # Publish Path for RVIZ
-    self.path.header = head
-    pose = PoseStamped()
-    pose.header = head
-    pose.pose.position = myPoint
-    # pose.pose.position.z += self.path_z_offset
-    pose.pose.orientation = myQuat
-    self.path.poses.append(pose)
-    self.path_pub.publish(self.path)
 
 
 
