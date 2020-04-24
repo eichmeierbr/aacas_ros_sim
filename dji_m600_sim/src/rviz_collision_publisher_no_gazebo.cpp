@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <rviz_visual_tools/rviz_visual_tools.h>
+#include <vector>
 
 namespace {
 constexpr double radius = 0.127
@@ -15,22 +16,23 @@ int main(int argc, char **argv) {
   std::vector<geometry_msgs::Point> sphere_centers;
   
   geometry_msgs::Point sphere;
-  float obs_x;
-  float obs_y;
-  float obs_z;
+  int num_obstacles;
+  std::vector<float> obs_x;
+  std::vector<float> obs_y;
+  std::vector<float> obs_z;
 
   nh.getParam("ob_start_x", obs_x);
   nh.getParam("ob_start_y", obs_y);
   nh.getParam("ob_start_z", obs_z);
 
-  sphere.x = obs_x;
-  sphere.y = obs_y;
-  sphere.z = obs_z;
-
-//   geometry_msgs::Point sphere = geometry_msgs::Point(obs_x,obs_y,obs_z);
-
-
-  sphere_centers.push_back(sphere);
+  for(int i=0; i<obs_x.size(); ++i)
+  {
+    sphere.x = obs_x[i];
+    sphere.y = obs_y[i];
+    sphere.z = obs_z[i];
+    ROS_INFO("Adding Sphere: x:%.1f, y:%.1f, z:%.1f", obs_x[i], obs_y[i],obs_z[i]);
+    sphere_centers.push_back(sphere);
+  }
 
   visual_tools_->loadMarkerPub();
   visual_tools_->waitForMarkerPub();

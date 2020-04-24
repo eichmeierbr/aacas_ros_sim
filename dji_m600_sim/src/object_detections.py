@@ -84,15 +84,17 @@ if __name__ == '__main__':
     obs_x = rospy.get_param('ob_start_x')
     obs_y = rospy.get_param('ob_start_y')
     obs_z = rospy.get_param('ob_start_z')
-    ob_start = np.array([obs_x, obs_y, obs_z])
-    obstacle = Objects(pos=ob_start)
 
-    detector.true_detections_ = [obstacle]
+    for i in range(len(obs_x)):
+      ob_start = np.array([obs_x[i], obs_y[i], obs_z[i]])
+      obstacle = Objects(pos=ob_start)
+  
+      detector.true_detections_.append(obstacle)
 
     rate = rospy.Rate(10) # 10hz
-    while not rospy.is_shutdown():
-        # detector.publishDetections()
-        rate.sleep()
+    ##while not rospy.is_shutdown():
+    ##    # detector.publishDetections()
+    ##    rate.sleep()
 
     rospy.spin()
     
