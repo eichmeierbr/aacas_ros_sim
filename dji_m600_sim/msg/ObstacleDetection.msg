@@ -1,3 +1,4 @@
+uint32  id
 string  type
 float64 distance
 geometry_msgs/Point position
