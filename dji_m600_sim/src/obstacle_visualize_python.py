@@ -26,9 +26,9 @@ def trueMarkerCallback(msg):
         marker1.pose.position.y = detect.position.y
         marker1.pose.position.z = detect.position.z
         marker1.pose.orientation.w = 1
-        marker1.scale.x = sphere_rad
-        marker1.scale.y = sphere_rad
-        marker1.scale.z = sphere_rad
+        marker1.scale.x = sphere_rad*2
+        marker1.scale.y = sphere_rad*2
+        marker1.scale.z = sphere_rad*2
 
         marker1.color.r = 1.0
         marker1.color.g = 0

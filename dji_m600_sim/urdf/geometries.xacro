@@ -15,6 +15,13 @@
         </geometry>
 	</xacro:macro>
 
+    <xacro:macro name="drone_cylinder">
+        <geometry>
+            <cylinder length="${chassisH}" radius="${chassisW/2-0.05}"/>
+        </geometry>
+        <!-- <origin rpy="0 0 0" xyz="0 0 0"/> -->
+    </xacro:macro>
+
     <xacro:macro name="lidar_geometry">
         <geometry>
             <cylinder length="${lidarThick}" radius="${lidarRadius}"/>

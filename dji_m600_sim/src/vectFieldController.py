@@ -117,6 +117,7 @@ class vectFieldController:
     def move(self):
         # Check if we have reached the next waypoint. If so, update
         self.changeGoalPt()
+        self.v_max =  rospy.get_param('maximum_velocity')
         
         # Update Detections
         self.updateDetections()
@@ -142,12 +143,15 @@ class vectFieldController:
         T_vo = self.transformToGoalCoords()    
         
         for obst in self.detections:
-            # obst = self.detections[i].fake_detection() ########### Rework fake detection with detection node
             obs_pos = np.array([obst.position.x, obst.position.y, obst.position.z])
+            obs_vel = np.array([obst.velocity.x, obst.velocity.y, obst.velocity.z])
             
             pos = np.array([obs_pos[0], obs_pos[1], 1])
+            vel = np.array([obs_vel[0], obs_vel[1], 0])
             obst_trans = T_vo @ pos
-            if all([obst.distance < closeObject.distance, obst_trans[1] > 0]):
+            obst_vel = T_vo @ vel
+            other = np.dot(obst_vel, obst_trans)
+            if all([obst.distance < closeObject.distance, obst_trans[1] > 0, other <= 1]):
                 closeObject = obst
                 move = True
         return [closeObject, move]
@@ -187,8 +191,8 @@ class vectFieldController:
         trans_vel = T_vo @ [obst_vel[0], obst_vel[1], 0]
         trans_pos = T_vo @ [obst_pos[0], obst_pos[1], 1]
 
-        # Check if object is stationary
-        if np.linalg.norm(trans_vel) > 50:
+        # Check if object is moving
+        if np.linalg.norm(trans_vel) > 1.1:
             if(trans_vel[0] >= 0):          # If obstacle is moving right
                 self.freq = 1               # Orbit CW
             else:                           # If obstacle is moving left
@@ -271,8 +275,8 @@ if __name__ == '__main__':
 
     # Launch Node
     field = vectFieldController()
-    field.waypoints  = np.array([[0, 0, 10], 
-                                 [20, 0, 10]])
+    field.waypoints  = np.array([rospy.get_param('waypoint_1'), 
+                                 rospy.get_param('waypoint_2')])
     field.goal = field.waypoints[0] 
 
     rospy.sleep(2)

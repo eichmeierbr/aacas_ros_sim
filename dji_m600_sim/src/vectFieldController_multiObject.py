@@ -93,14 +93,23 @@ class vectFieldController:
         if len(self.waypoints) == 0: return velDes
         
         # Check if we are close to an object
-        closeObjects, avoid = self.getCloseObject()
+        closeObjects, avoid = self.getCloseObjects()
         
         # If close to object, orbit
         if avoid:
+            vels = []
             for obstacle in closeObjects:
-                if self.change_orbit_wait_ < (rospy.Time.now() - self.last_orbit_change_).to_sec():
-                    self.decideOrbitDirection(obstacle)
-                velDes[:3] = self.getOrbit([obstacle.position.x,obstacle.position.y,obstacle.position.z])    
+                # if self.change_orbit_wait_ < (rospy.Time.now() - self.last_orbit_change_).to_sec():
+                #     self.decideOrbitDirection(obstacle)
+                # velDes[:3] = self.getOrbit([obstacle.position.x,obstacle.position.y,obstacle.position.z])
+
+                self.decideOrbitDirection(obstacle)
+                vel = self.getOrbit([obstacle.position.x,obstacle.position.y,obstacle.position.z])
+                mod = 1/(obstacle.distance)
+                # mod = np.exp(-1/(3*obstacle.distance))
+                vels.append(vel * mod)
+            velDes[:3] = np.sum(vels,axis=0)
+            velDes[:3] = velDes[:3]/np.linalg.norm(velDes[:3])*self.v_max
 
         ## If there are no nearby objects to avoid
         else: # Go to goal 
@@ -119,7 +128,7 @@ class vectFieldController:
 
     ## TODO: Implement in 3D
     ## For Now: 2D Implementation
-    def getCloseObject(self):
+    def getCloseObjects(self):
         closeObjects = []
         move = False
 
@@ -131,7 +140,7 @@ class vectFieldController:
             
             pos = np.array([obs_pos[0], obs_pos[1], 1])
             obst_trans = T_vo @ pos
-            if obst_trans[1] > 0:
+            if obst_trans[1] > 0 and obst.distance < self.safe_dist:
                 closeObjects.append(obst)
                 move = True
         return closeObjects, move
@@ -191,6 +200,7 @@ class vectFieldController:
     def move(self):
         # Check if we have reached the next waypoint. If so, update
         self.changeGoalPt()
+        self.v_max =  rospy.get_param('maximum_velocity')
         
         # Update Detections
         self.updateDetections()
@@ -274,8 +284,8 @@ if __name__ == '__main__':
 
     # Launch Node
     field = vectFieldController()
-    field.waypoints  = np.array([[0, 0, 10], 
-                                 [20, 0, 10]])
+    field.waypoints  = np.array([rospy.get_param('waypoint_1'), 
+                                 rospy.get_param('waypoint_2')])
     field.goal = field.waypoints[0] 
 
     rospy.sleep(2)

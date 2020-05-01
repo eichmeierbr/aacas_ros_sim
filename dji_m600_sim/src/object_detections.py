@@ -63,13 +63,14 @@ class Objects:
   def __init__(self, ident = 0, class_name='ball', pos = np.zeros(3), vel=np.zeros(3), dist = np.inf):
     self.class_name = class_name
     self.pos = pos
-    self.vel = vel
+    self.vel = [rospy.get_param('ob_vel_x'), rospy.get_param('ob_vel_y'), rospy.get_param('ob_vel_z')]
     self.dist = dist
     self.pos_noise = rospy.get_param('object_position_noise')
     self.vel_noise = rospy.get_param('object_velocity_noise')
     self.detect_rate = rospy.get_param('object_detection_rate')
     self.detect_range = rospy.get_param('object_detection_dist')
     self.id = ident
+    self.lastUpdate = 0
 
   def get_position(self):
     return self.pos + np.random.randn(3) * self.pos_noise
@@ -86,8 +87,18 @@ class Objects:
   def convertToDetectionMessage(self, orig_pos = [0,0,0]):
     dist = np.linalg.norm(orig_pos - np.array([self.pos[0], self.pos[1], self.pos[2]]))
 
-    travel_dist = 15
-    self.pos[1] = rospy.Time.now().to_sec() % travel_dist - travel_dist/2
+    travel_dist = 15.0
+    dy = rospy.get_param('ob_vel_y')
+    dx = rospy.get_param('ob_vel_x')
+    nowTime = rospy.Time.now().to_sec()
+    dt = nowTime - self.lastUpdate
+    self.lastUpdate = nowTime
+
+    self.pos[1] += dy*dt
+    if self.pos[1] > travel_dist/2: self.pos[1] = -travel_dist/2
+    # self.pos[0] = dx * rospy.Time.now().to_sec() % travel_dist
+    self.vel[0] = dx
+    self.vel[1] = dy
 
     out_detection = ObstacleDetection()
     out_detection.id = self.id
@@ -116,7 +127,7 @@ if __name__ == '__main__':
   
       detector.true_detections_.append(obstacle)
 
-    rate = rospy.Rate(10) # 10hz
+    rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         detector.publishDetections()
         rate.sleep()
