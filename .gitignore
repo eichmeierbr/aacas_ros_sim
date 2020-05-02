@@ -1,2 +1,4 @@
 *.dae
 meshes/
+.vscode
+__pycache__
