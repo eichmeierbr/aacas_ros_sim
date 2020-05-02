@@ -3,8 +3,8 @@
 import rospy
 import numpy as np
 from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, Point, Vector3, Quaternion
-from dji_m600_sim.msg import ObstacleDetection, ObstacleDetectionArray
-from dji_m600_sim.srv import QueryDetections, QueryDetectionsResponse
+from aacas_detection.msg import ObstacleDetection, ObstacleDetectionArray
+from aacas_detection.srv import QueryDetections, QueryDetectionsResponse
 import copy
 
 class DetectionSimulation:

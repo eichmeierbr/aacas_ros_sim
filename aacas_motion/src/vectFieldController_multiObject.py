@@ -5,8 +5,9 @@ import numpy as np
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, Point, Vector3, Quaternion
 from scipy.spatial.transform import Rotation as R
-from dji_m600_sim.srv import DroneTaskControl, QueryDetections
-from dji_m600_sim.msg import ObstacleDetection
+from dji_m600_sim.srv import DroneTaskControl
+from aacas_detection.srv import QueryDetections
+from aacas_detection.msg import ObstacleDetection
 
 
 
@@ -93,14 +94,25 @@ class vectFieldController:
         if len(self.waypoints) == 0: return velDes
         
         # Check if we are close to an object
-        [closeObject, move] = self.getCloseObject()
+        closeObjects, avoid = self.getCloseObjects()
         
         # If close to object, orbit
-        if all([move, closeObject.distance < self.safe_dist]):
-            if self.change_orbit_wait_ < (rospy.Time.now() - self.last_orbit_change_).to_sec():
-                self.decideOrbitDirection(closeObject)
-            velDes[:3] = self.getOrbit([closeObject.position.x,closeObject.position.y,closeObject.position.z])    
+        if avoid:
+            vels = []
+            for obstacle in closeObjects:
+                # if self.change_orbit_wait_ < (rospy.Time.now() - self.last_orbit_change_).to_sec():
+                #     self.decideOrbitDirection(obstacle)
+                # velDes[:3] = self.getOrbit([obstacle.position.x,obstacle.position.y,obstacle.position.z])
 
+                self.decideOrbitDirection(obstacle)
+                vel = self.getOrbit([obstacle.position.x,obstacle.position.y,obstacle.position.z])
+                mod = 1/(obstacle.distance)
+                # mod = np.exp(-1/(3*obstacle.distance))
+                vels.append(vel * mod)
+            velDes[:3] = np.sum(vels,axis=0)
+            velDes[:3] = velDes[:3]/np.linalg.norm(velDes[:3])*self.v_max
+
+        ## If there are no nearby objects to avoid
         else: # Go to goal 
             velDes[:3] = self.goToGoalField()
 
@@ -114,29 +126,11 @@ class vectFieldController:
 
         return velDes
 
-    def move(self):
-        # Check if we have reached the next waypoint. If so, update
-        self.changeGoalPt()
-        self.v_max =  rospy.get_param('maximum_velocity')
-        
-        # Update Detections
-        self.updateDetections()
-
-        # Get velocity vector
-        velDes = self.getXdes() 
-        
-        # Publish Vector
-        joy_out = Joy()
-        joy_out.header.stamp = rospy.Time.now()
-        joy_out.axes = [velDes[0], velDes[1], velDes[2],velDes[3],]
-        self.vel_ctrl_pub_.publish(joy_out)
-
 
     ## TODO: Implement in 3D
     ## For Now: 2D Implementation
-    def getCloseObject(self):
-        closeObject = ObstacleDetection()
-        closeObject.distance = np.inf
+    def getCloseObjects(self):
+        closeObjects = []
         move = False
 
         # Perform transformed coordinates
@@ -144,17 +138,13 @@ class vectFieldController:
         
         for obst in self.detections:
             obs_pos = np.array([obst.position.x, obst.position.y, obst.position.z])
-            obs_vel = np.array([obst.velocity.x, obst.velocity.y, obst.velocity.z])
             
             pos = np.array([obs_pos[0], obs_pos[1], 1])
-            vel = np.array([obs_vel[0], obs_vel[1], 0])
             obst_trans = T_vo @ pos
-            obst_vel = T_vo @ vel
-            other = np.dot(obst_vel, obst_trans)
-            if all([obst.distance < closeObject.distance, obst_trans[1] > 0, other <= 1]):
-                closeObject = obst
+            if obst_trans[1] > 0 and obst.distance < self.safe_dist:
+                closeObjects.append(obst)
                 move = True
-        return [closeObject, move]
+        return closeObjects, move
 
 
     def changeGoalPt(self):
@@ -191,8 +181,8 @@ class vectFieldController:
         trans_vel = T_vo @ [obst_vel[0], obst_vel[1], 0]
         trans_pos = T_vo @ [obst_pos[0], obst_pos[1], 1]
 
-        # Check if object is moving
-        if np.linalg.norm(trans_vel) > 1.1:
+        # Check if object is stationary
+        if np.linalg.norm(trans_vel) > 50:
             if(trans_vel[0] >= 0):          # If obstacle is moving right
                 self.freq = 1               # Orbit CW
             else:                           # If obstacle is moving left
@@ -205,6 +195,26 @@ class vectFieldController:
             else:                   # If object is to the left
                 self.freq = -1      # Orbit CCW
         self.last_orbit_change_ = rospy.Time.now()
+
+
+
+    def move(self):
+        # Check if we have reached the next waypoint. If so, update
+        self.changeGoalPt()
+        self.v_max =  rospy.get_param('maximum_velocity')
+        
+        # Update Detections
+        self.updateDetections()
+
+        # Get velocity vector
+        velDes = self.getXdes() 
+        
+        # Publish Vector
+        joy_out = Joy()
+        joy_out.header.stamp = rospy.Time.now()
+        joy_out.axes = [velDes[0], velDes[1], velDes[2],velDes[3],]
+        self.vel_ctrl_pub_.publish(joy_out)
+
 
 
     ## TODO: Implement in 3D

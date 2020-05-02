@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include <rviz_visual_tools/rviz_visual_tools.h>
-#include "dji_m600_sim/ObstacleDetectionArray.h"
-#include "dji_m600_sim/ObstacleDetection.h"
+#include "aacas_detection/ObstacleDetectionArray.h"
+#include "aacas_detection/ObstacleDetection.h"
 #include <vector>
 #include <string>
 
@@ -11,7 +11,7 @@ constexpr double radius = 0.127;
 rviz_visual_tools::RvizVisualToolsPtr visual_tools_;
 
 // Update Visual Object Location callback
-void obstacle_visualization_callback(const dji_m600_sim::ObstacleDetectionArray msg)
+void obstacle_visualization_callback(const aacas_detection::ObstacleDetectionArray msg)
 {
   
   visual_tools_.reset(

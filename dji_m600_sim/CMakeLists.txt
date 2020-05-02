@@ -14,19 +14,19 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
-add_message_files(
+#add_message_files(
 #  DIRECTORY srv
-  FILES
-  ObstacleDetection.msg
-  ObstacleDetectionArray.msg
-)
+#  FILES
+#  ObstacleDetection.msg
+#  ObstacleDetectionArray.msg
+#)
 
 
 add_service_files(
   DIRECTORY srv
   FILES
   DroneTaskControl.srv
-  QueryDetections.srv
+#  QueryDetections.srv
 )
 
 generate_messages(

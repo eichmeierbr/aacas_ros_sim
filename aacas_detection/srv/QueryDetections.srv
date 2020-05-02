@@ -3,5 +3,5 @@ geometry_msgs/Point vehicle_position
 geometry_msgs/Quaternion attitude    
 ---
 # Response
-dji_m600_sim/ObstacleDetectionArray detection_array
+aacas_detection/ObstacleDetectionArray detection_array
 

@@ -4,7 +4,7 @@ import rospy
 import numpy as np
 from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, Point, Vector3, Quaternion
 from visualization_msgs.msg import Marker, MarkerArray
-from dji_m600_sim.msg import ObstacleDetection, ObstacleDetectionArray
+from aacas_detection.msg import ObstacleDetection, ObstacleDetectionArray
 import copy
 
 
