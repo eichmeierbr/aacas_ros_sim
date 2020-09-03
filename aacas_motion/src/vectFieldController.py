@@ -149,8 +149,8 @@ class vectFieldController:
             
             pos = np.array([obs_pos[0], obs_pos[1], 1])
             vel = np.array([obs_vel[0], obs_vel[1], 0])
-            obst_trans = T_vo @ pos
-            obst_vel = T_vo @ vel
+            obst_trans = np.matmul(T_vo, pos)
+            obst_vel   = np.matmul(T_vo, vel)
             other = np.dot(obst_vel, obst_trans)
             if all([obst.distance < closeObject.distance, obst_trans[1] > 0, other <= 1]):
                 closeObject = obst
@@ -189,8 +189,8 @@ class vectFieldController:
         # Perform transformed coordinates
         T_vo = self.transformToGoalCoords()
         
-        trans_vel = T_vo @ [obst_vel[0], obst_vel[1], 0]
-        trans_pos = T_vo @ [obst_pos[0], obst_pos[1], 1]
+        trans_vel = np.matmul(T_vo, [obst_vel[0], obst_vel[1], 0])
+        trans_pos = np.matmul(T_vo, [obst_pos[0], obst_pos[1], 1])
 
         # Check if object is moving
         if np.linalg.norm(trans_vel) > 1.1:
@@ -212,10 +212,11 @@ class vectFieldController:
     ## For Now: 2D Implementation
     def getOrbit(self, center):
         xhat = self.pos[:2] - center[:2] # Change to orbit coords
-        gam = self.k_conv*(self.rad**2 - xhat@xhat) # Convergence to orbit
+        gam = self.k_conv*(self.rad**2 - np.matmul(xhat, xhat) ) # Convergence to orbit
+
 
         A = np.array([[gam, self.freq], [-self.freq, gam]]) # Modified harmonic oscillator
-        g = A @ xhat[:2]   #  Calculate nominal velocity
+        g = np.matmul(A, xhat[:2])   #  Calculate nominal velocity
         
         # Scale the vector field
         v_g = np.linalg.norm(g)
@@ -257,7 +258,7 @@ class vectFieldController:
         R_ov = np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
         t_ov = self.pos[:2]
 
-        tempVect = (-1 * R_ov.T) @ t_ov
+        tempVect = np.matmul((-1 * R_ov.T), t_ov)
         T_vo = np.array([[R_ov[0,0], R_ov[1,0], tempVect[0]], [R_ov[0,1], R_ov[1,1], tempVect[1]], [0, 0, 1]])
 
         return T_vo

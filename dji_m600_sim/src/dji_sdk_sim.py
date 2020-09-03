@@ -181,7 +181,7 @@ class DJI_simulator:
       yaw_rate_error = -1*(self.yaw_rate_ - self.yaw_rate_des_)
 
       # Calculate New Input
-      velDot = (self.A_vel_ - self.B_vel_ @ self.K_vel_) @ vel_error
+      velDot = np.matmul(self.A_vel_ - np.matmul(self.B_vel_ ,self.K_vel_),vel_error)
       yaw_rate_dot = self.K_yaw_rate_ * yaw_rate_error
 
       # TODO: Update State using Integration (ODE45)
@@ -202,7 +202,7 @@ class DJI_simulator:
 
 
       # Calculate New Input
-      posDot = (self.A_pos_ - self.B_pos_ @ self.K_pos_) @ pos_error
+      posDot = np.matmul(self.A_pos_ - np.matmul(self.B_pos_,self.K_pos_), pos_error)
       yawDot = self.K_yaw_ * yaw_error
 
       if np.linalg.norm(posDot) > self.v_max:
