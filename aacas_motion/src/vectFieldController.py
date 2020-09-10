@@ -43,6 +43,8 @@ class vectFieldController:
         self.g2g_sig =  rospy.get_param('g2g_sigma')
         self.g2g_sig_sq = self.g2g_sig**2
 
+        self.in_avoid = False
+
         # state Information
         self.pos = np.zeros(3)
         self.vel = np.zeros(3)
@@ -95,15 +97,37 @@ class vectFieldController:
         
         # Check if we are close to an object
         [closeObject, move] = self.getCloseObject()
+
+        # If object is close to the goal
+        pos = closeObject.position
+        d = np.linalg.norm([pos.x - self.goal[0], pos.y - self.goal[1], pos.z - self.goal[2]])
+        v = [closeObject.velocity.x, closeObject.velocity.y, closeObject.velocity.z]
+        # if all([move, d < self.safe_dist, np.linalg.norm(v) < 0.5]):
+        #     velDes[:3] = self.repulsionField(closeObject)
         
         # If close to object, orbit
         if all([move, closeObject.distance < self.safe_dist]):
+        # if all([closeObject.distance < self.safe_dist]):
+            ## Orbit if the object comes into our safety radius, and is moving fast enough
             if self.change_orbit_wait_ < (rospy.Time.now() - self.last_orbit_change_).to_sec():
                 self.decideOrbitDirection(closeObject)
-            velDes[:3] = self.getOrbit([closeObject.position.x,closeObject.position.y,closeObject.position.z])    
+            velDes[:3] = self.getOrbit([closeObject.position.x,closeObject.position.y,closeObject.position.z])
+            self.in_avoid = True  
+
+        # elif all([move, np.linalg.norm(v) < 0.5]):
+        #     ## Orbit if the object comes into our safety radius, and is moving fast enough
+        #     # if self.change_orbit_wait_ < (rospy.Time.now() - self.last_orbit_change_).to_sec():
+        #     #     self.decideOrbitDirection(closeObject)
+        #     safeD_copy = self.safe_dist
+        #     self.safe_dist = 2
+        #     velDes[:3] = self.getOrbit([closeObject.position.x,closeObject.position.y,closeObject.position.z])
+        #     self.safe_dist = safeD_copy
+        #     self.in_avoid = True  
+
 
         else: # Go to goal 
             velDes[:3] = self.goToGoalField()
+            self.in_avoid = False
 
         # Normalize velocity
         if np.linalg.norm(velDes[:3]) > self.v_max:
@@ -169,7 +193,11 @@ class vectFieldController:
 
 
     def headingControl(self, velDes):
-        vel_angle = np.arctan2(velDes[1], velDes[0])
+        if self.in_avoid:
+            vel_angle = np.arctan2(velDes[1], velDes[0])
+        else:
+            vel_angle = - np.pi/2
+
         angleDiff = vel_angle - self.yaw
         angleDiff = (angleDiff + np.pi) % (2 * np.pi) - np.pi
         w_d = self.K_theta * angleDiff
@@ -247,8 +275,26 @@ class vectFieldController:
         return velDes
 
 
+    def repulsionField(self, obs):
+        g = self.goal - [obs.position.x, obs.position.y, obs.position.z]
+        
+        # Scale the magnitude of the resulting vector
+        dist2goal = np.linalg.norm(g)
+        v_g = self.v_max * (1- np.exp(-dist2goal**2/self.g2g_sig_sq))
+        
+        if dist2goal > 0: # Avoid dividing by zero
+            velDes = v_g/dist2goal * g # Dividing by dist is dividing by the norm
+        else:
+            velDes = np.array([0, 0, 0])
+        
+        if v_g > self.v_max:
+            g = self.v_max/v_g * g
+
+        return -velDes
+
     ## TODO: Implement in 3D
     ## For Now: 2D Implementation
+    # Transform coordinates. Origin on drone. X points to goal
     def transformToGoalCoords(self):
 
         dp = self.goal - self.pos

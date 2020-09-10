@@ -14,7 +14,7 @@ ob_start_z: [1.0]
 
 # Obstacle Velocity Parameters
 ob_vel_x: 0
-ob_vel_y: 3
+ob_vel_y: 2
 ob_vel_z: 0
 
 travel_dist: 15
