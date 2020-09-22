@@ -25,7 +25,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
   DIRECTORY srv
   FILES
-  DroneTaskControl.srv
+  SimDroneTaskControl.srv
 #  QueryDetections.srv
 )
 

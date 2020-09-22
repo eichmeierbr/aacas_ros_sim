@@ -10,7 +10,8 @@
 
     <xacro:property name="chassisXoffset" value="0.0" />
     <xacro:property name="chassisYoffset" value="0.0" />
-    <xacro:property name="chassisZoffset" value="0.55" />
+    <xacro:property name="chassisZoffset" value="0.0" />
+    <!-- <xacro:property name="chassisZoffset" value="0.55" /> -->
 
 
     <xacro:property name="chassisMass" value="1"/>
@@ -26,5 +27,6 @@
     <xacro:property name="chassisMeshXoffset" value="0.000"/>
     <xacro:property name="chassisMeshYoffset" value="0.000"/>
     <xacro:property name="chassisMeshZoffset" value="-${chassisZoffset}"/> 
+    <!-- <xacro:property name="chassisMeshZoffset" value="0.0"/>  -->
 
 </robot>

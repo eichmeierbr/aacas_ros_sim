@@ -33,8 +33,10 @@ void poseCallback(const geometry_msgs::PointStamped& msg){
 
   // Update and Send Path
   path.header = msg.header;
+  path.header.frame_id = "world";
   geometry_msgs::PoseStamped pose;
   pose.header = msg.header;
+  pose.header.frame_id = "world";
   pose.pose.position = msg.point;
   pose.pose.orientation = geom_quat;
   path.poses.push_back(pose);

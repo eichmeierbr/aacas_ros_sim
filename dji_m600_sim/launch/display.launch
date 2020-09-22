@@ -34,9 +34,7 @@
 
   <!-- RVIZ Launch Commands -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
-  <arg name="node_start_delay" default="5.0" />  
   <node pkg="dji_m600_sim" type="obstacle_visualize_python.py" name="marker_displayer" output="screen"/>
-  <!-- <node pkg="dji_m600_sim" type="rviz_collision_publisher_no_gazebo" name="rviz_collision_publisher" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' " output="screen"/> -->
 
 
 </launch>

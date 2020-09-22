@@ -5,7 +5,8 @@ import numpy as np
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, Point, Vector3, Quaternion
 from scipy.spatial.transform import Rotation as R
-from dji_m600_sim.srv import DroneTaskControl
+from dji_m600_sim.srv import SimDroneTaskControl
+from dji_sdk.srv import DroneTaskControl, SDKControlAuthority, SetLocalPosRef
 from aacas_detection.srv import QueryDetections
 from aacas_detection.msg import ObstacleDetection
 
@@ -57,19 +58,40 @@ class vectFieldController:
         vel_ctrl_pub_name = rospy.get_param('vel_ctrl_sub_name')
         self.vel_ctrl_pub_ = rospy.Publisher(vel_ctrl_pub_name, Joy, queue_size=10)
 
+        pos_ctrl_pub_name = rospy.get_param('pos_ctrl_sub_name')
+        self.pos_ctrl_pub_ = rospy.Publisher(pos_ctrl_pub_name, Joy, queue_size=10)
+
         # Subscriber Information
         rospy.Subscriber(rospy.get_param('position_pub_name'), PointStamped,      self.position_callback, queue_size=1)
         rospy.Subscriber(rospy.get_param('velocity_pub_name'), Vector3Stamped,    self.velocity_callback, queue_size=1)
         rospy.Subscriber(rospy.get_param('attitude_pub_name'), QuaternionStamped, self.attitude_callback, queue_size=1)
 
         # Service Information
-        query_detections_name = rospy.get_param('query_detections_service')
-        rospy.wait_for_service(query_detections_name)
-        self.query_detections_service_ = rospy.ServiceProxy(query_detections_name, QueryDetections)
+        self.live_flight = rospy.get_param('live_flight',default=False)
+        if self.live_flight:
+            query_detections_name = rospy.get_param('query_detections_service')
+            rospy.wait_for_service(query_detections_name)
+            self.query_detections_service_ = rospy.ServiceProxy(query_detections_name, QueryDetections)
+    
+            takeoff_service_name = rospy.get_param('takeoff_land_service_name')
+            rospy.wait_for_service(takeoff_service_name)
+            self.takeoff_service = rospy.ServiceProxy(takeoff_service_name, DroneTaskControl)
+    
+            authority_service_name = 'dji_sdk/sdk_control_authority'
+            rospy.wait_for_service(authority_service_name)
+            self.authority_service = rospy.ServiceProxy(authority_service_name, SDKControlAuthority)
 
-        takeoff_service_name = rospy.get_param('takeoff_land_service_name')
-        rospy.wait_for_service(takeoff_service_name)
-        self.takeoff_service = rospy.ServiceProxy(takeoff_service_name, DroneTaskControl)
+            set_pos_name = 'dji_sdk/set_local_pos_ref'
+            rospy.wait_for_service(set_pos_name)
+            self.set_pos_service = rospy.ServiceProxy(set_pos_name, SetLocalPosRef)
+        else:
+            query_detections_name = rospy.get_param('query_detections_service')
+            rospy.wait_for_service(query_detections_name)
+            self.query_detections_service_ = rospy.ServiceProxy(query_detections_name, QueryDetections)
+    
+            takeoff_service_name = rospy.get_param('takeoff_land_service_name')
+            rospy.wait_for_service(takeoff_service_name)
+            self.takeoff_service = rospy.ServiceProxy(takeoff_service_name, DroneTaskControl)
 
 
     def position_callback(self, msg):
@@ -193,10 +215,11 @@ class vectFieldController:
 
 
     def headingControl(self, velDes):
-        if self.in_avoid:
-            vel_angle = np.arctan2(velDes[1], velDes[0])
-        else:
-            vel_angle = - np.pi/2
+        # if self.in_avoid:
+        #     vel_angle = np.arctan2(velDes[1], velDes[0])
+        # else:
+        #     vel_angle = - np.pi/2
+        vel_angle = np.arctan2(velDes[1], velDes[0])
 
         angleDiff = vel_angle - self.yaw
         angleDiff = (angleDiff + np.pi) % (2 * np.pi) - np.pi
@@ -329,23 +352,32 @@ if __name__ == '__main__':
 
     rospy.sleep(2)
 
+    rospy.loginfo("LAUNCH")
+
     ########### Takeoff Controll ###############
+    if field.live_flight:
+        resp = field.authority_service(1)
+        resp = field.set_pos_service()
     resp1 = field.takeoff_service(4)
     ########### Takeoff Controll ###############
 
+    rospy.sleep(10)
 
     startTime = rospy.Time.now()
     rate = rospy.Rate(10) # 10hz
-    while (rospy.Time.now() - startTime).to_sec() < 600:
+    while (rospy.Time.now() - startTime).to_sec() < 200:
         field.move()
         rate.sleep()
 
+    rospy.loginfo("LAND")
+
     ########### Takeoff Controll ###############
     resp1 = field.takeoff_service(6)
+    if field.live_flight:
+        resp1 = field.authority_service(0)
     ########### Takeoff Controll ###############
 
     rospy.spin()
     
   except rospy.ROSInterruptException:
     pass
-
