@@ -6,7 +6,7 @@ from sensor_msgs.msg import Imu, Joy
 from nav_msgs.msg import Path
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-from dji_m600_sim.srv import DroneTaskControl, DroneTaskControlResponse
+from dji_m600_sim.srv import SimDroneTaskControl, SimDroneTaskControlResponse
 
 # from PACKAGE_NAME.srv import SERVICE1, SERVICE2, etc
 
@@ -86,7 +86,7 @@ class DJI_simulator:
     rospy.Subscriber(self.vel_ctrl_sub_name, Joy, self.vel_ctrl_callback, queue_size=1)
 
      ## Service Server Information
-    self.task_ctrl_service_ = rospy.Service(rospy.get_param('takeoff_land_service_name'), DroneTaskControl, self.DroneTaskControl)
+    self.task_ctrl_service_ = rospy.Service(rospy.get_param('takeoff_land_service_name'), SimDroneTaskControl, self.DroneTaskControl)
 
 
 
@@ -246,7 +246,7 @@ class DJI_simulator:
     self.ascend_descend_subroutine(is_takeoff = is_takeoff)
 
     self.v_max = v_max_copy
-    return DroneTaskControlResponse(True,4,4,3)
+    return SimDroneTaskControlResponse(True,4,4,3)
 
 
   def ascend_descend_subroutine(self, is_takeoff = False):

@@ -28,6 +28,9 @@
   <build_depend>lidar_process</build_depend>
   <run_depend>lidar_process</run_depend>
 
+  <build_depend>dji_sdk</build_depend>
+  <run_depend>dji_sdk</run_depend>
+
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>

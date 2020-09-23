@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
 #  aacas_detection
 #  dji_m600_sim
   lidar_process
+  dji_sdk
 )
 
 

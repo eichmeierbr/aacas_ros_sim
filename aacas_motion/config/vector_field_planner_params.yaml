@@ -1,6 +1,6 @@
 # General Field Parameters
 switch_waypoint_distance: 1
-maximum_velocity:         3
+maximum_velocity:         2
 safe_distance:            5
 
 waypoint_1: []
