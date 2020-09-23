@@ -12,14 +12,9 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_ros
   rviz_visual_tools
   message_generation
+  lidar_process
 )
 
-#add_message_files(
-#  DIRECTORY srv
-#  FILES
-#  ObstacleDetection.msg
-#  ObstacleDetectionArray.msg
-#)
 
 
 add_service_files(

@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include <rviz_visual_tools/rviz_visual_tools.h>
-#include "aacas_detection/ObstacleDetectionArray.h"
-#include "aacas_detection/ObstacleDetection.h"
+#include "lidar_process/tracked_obj.h"
+#include "lidar_process/tracked_obj_arr.h"
 #include <vector>
 #include <string>
 
@@ -11,7 +11,7 @@ constexpr double radius = 0.127;
 rviz_visual_tools::RvizVisualToolsPtr visual_tools_;
 
 // Update Visual Object Location callback
-void obstacle_visualization_callback(const aacas_detection::ObstacleDetectionArray msg)
+void obstacle_visualization_callback(const lidar_process::tracked_obj_arr msg)
 {
   
   visual_tools_.reset(
@@ -19,15 +19,15 @@ void obstacle_visualization_callback(const aacas_detection::ObstacleDetectionArr
 
   
   std::vector<geometry_msgs::Point> sphere_centers;
-  auto detections = msg.detections;
+  std::vector<lidar_process::tracked_obj> detections = msg.tracked_obj_arr;
 
   geometry_msgs::Point sphere;
 
   for(int i=0; i<detections.size(); ++i)
   {
-    sphere.x = detections[i].position.x;
-    sphere.y = detections[i].position.y;
-    sphere.z = detections[i].position.z;
+    sphere.x = detections[i].point.x;
+    sphere.y = detections[i].point.y;
+    sphere.z = detections[i].point.z;
     sphere_centers.push_back(sphere);
   }
 
@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
   std::string obstacle_location_topic;
   obstacle_location_topic = nh.getParam("true_obstacle_topic", obstacle_location_topic);
 
-  ros::Subscriber april_detection_sub = nh.subscribe("obstacle_information", 1000, obstacle_visualization_callback);
+  ros::Subscriber obj_detection_sub = nh.subscribe("obstacle_information", 1000, obstacle_visualization_callback);
 
   ros::spin();
   return 0;

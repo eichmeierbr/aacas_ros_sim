@@ -3,19 +3,22 @@
 import rospy
 import numpy as np
 from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, Point, Vector3, Quaternion
-from aacas_detection.msg import ObstacleDetection, ObstacleDetectionArray
+from lidar_process.msg import tracked_obj, tracked_obj_arr
 from aacas_detection.srv import QueryDetections, QueryDetectionsResponse
 import copy
 
 class DetectionSimulation:
   def __init__(self):
     self.true_detections_ = []
-    self.sim_detections_ = ObstacleDetectionArray()
-    self.true_out_detections_ = ObstacleDetectionArray()
+    # self.sim_detections_ = ObstacleDetectionArray()
+    # self.true_out_detections_ = ObstacleDetectionArray()
+
+    self.sim_detections_ = tracked_obj_arr()
+    self.true_out_detections_ = tracked_obj_arr()
 
     # Publisher for the detections
     detection_pub_name = rospy.get_param('true_obstacle_topic')
-    self.detection_pub_ = rospy.Publisher(detection_pub_name, ObstacleDetectionArray, queue_size=1)
+    self.detection_pub_ = rospy.Publisher(detection_pub_name, tracked_obj_arr, queue_size=1)
 
     # Service to report simulated detections
     detections_service_name = rospy.get_param('query_detections_service')
@@ -27,21 +30,23 @@ class DetectionSimulation:
   def updateDetections(self, pos=np.zeros(3), quat=[0,0,0,1], true_detections=False):
 
     if true_detections: 
-      true_detects = ObstacleDetectionArray()
+      # true_detects = ObstacleDetectionArray()
+      true_detects = tracked_obj_arr()
       for obj in self.true_detections_:
         out_detection = obj.convertToDetectionMessage(orig_pos = pos)
-        true_detects.detections.append(out_detection)
+        true_detects.tracked_obj_arr.append(out_detection)
       self.true_out_detections_ = true_detects
 
     else: 
-      sim_detections = ObstacleDetectionArray()
+      # sim_detections = ObstacleDetectionArray()
+      sim_detections = tracked_obj_arr()
       for detection in self.true_detections_:
         obj = detection.fake_detection()
         obj.dist = np.linalg.norm(pos - np.array([obj.pos[0], obj.pos[1], obj.pos[2]]))
 
         if detection.detect_rate > np.random.uniform() and obj.dist < detection.detect_range:
           out_detection = obj.convertToDetectionMessage(orig_pos = pos)
-          sim_detections.detections.append(out_detection)
+          sim_detections.tracked_obj_arr.append(out_detection)
 
           self.sim_detections_ = sim_detections
 
@@ -100,12 +105,13 @@ class Objects:
     self.vel[0] = dx
     self.vel[1] = dy
 
-    out_detection = ObstacleDetection()
-    out_detection.id = self.id
-    out_detection.type = self.class_name
-    out_detection.position = Point(  self.pos[0], self.pos[1], self.pos[2]) 
-    out_detection.velocity = Vector3(self.vel[0], self.vel[1], self.vel[2]) 
-    out_detection.distance = dist
+    out_detection = tracked_obj()
+    out_detection.object_id = self.id
+    out_detection.object_type = self.class_name
+    out_detection.point = Point(self.pos[0], self.pos[1], self.pos[2])
+
+    # out_detection.velocity = Vector3(self.vel[0], self.vel[1], self.vel[2]) 
+    # out_detection.distance = dist
 
     return out_detection
   

@@ -7,15 +7,16 @@ from geometry_msgs.msg import QuaternionStamped, Vector3Stamped, PointStamped, P
 from scipy.spatial.transform import Rotation as R
 from dji_m600_sim.srv import DroneTaskControl
 from aacas_detection.srv import QueryDetections
-from aacas_detection.msg import ObstacleDetection
+from lidar_process.msg import tracked_obj, tracked_obj_arr
 
 
 
 class Objects:
-    def __init__(self, pos = np.zeros(3), vel=np.zeros(3), dist = np.inf):
-        self.pos = pos
-        self.vel = vel
-        self.dist = dist
+    def __init__(self, pos = np.zeros(3), vel=np.zeros(3), dist = np.inf, id=0):
+        self.id = id
+        self.position = pos
+        self.velocity = vel
+        self.distance = dist
   
 
 class vectFieldController:
@@ -100,8 +101,8 @@ class vectFieldController:
 
         # If object is close to the goal
         pos = closeObject.position
-        d = np.linalg.norm([pos.x - self.goal[0], pos.y - self.goal[1], pos.z - self.goal[2]])
-        v = [closeObject.velocity.x, closeObject.velocity.y, closeObject.velocity.z]
+        # d = np.linalg.norm([pos.x - self.goal[0], pos.y - self.goal[1], pos.z - self.goal[2]])
+        # v = [closeObject.velocity.x, closeObject.velocity.y, closeObject.velocity.z]
         # if all([move, d < self.safe_dist, np.linalg.norm(v) < 0.5]):
         #     velDes[:3] = self.repulsionField(closeObject)
         
@@ -160,7 +161,7 @@ class vectFieldController:
     ## TODO: Implement in 3D
     ## For Now: 2D Implementation
     def getCloseObject(self):
-        closeObject = ObstacleDetection()
+        closeObject = Objects()
         closeObject.distance = np.inf
         move = False
 
@@ -312,7 +313,15 @@ class vectFieldController:
 
     def updateDetections(self):
         in_detections = self.query_detections_service_(vehicle_position=self.pos_pt, attitude=self.quat)
-        self.detections = in_detections.detection_array.detections
+        self.detections = []
+        for obj in in_detections.detection_array.tracked_obj_arr:
+            newObj = Objects()
+            newObj.position = obj.point
+            newObj.velocity = Point(0,0,0)
+            newObj.id = obj.object_id
+            newObj.distance = np.linalg.norm([obj.point.x - self.pos[0], obj.point.y - self.pos[1], obj.point.z - self.pos[2]])
+            self.detections.append(newObj)
+            # self.detections = in_detections.detection_array.tracked_obj_arr
 
 
 if __name__ == '__main__': 
