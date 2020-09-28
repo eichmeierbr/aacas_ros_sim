@@ -124,11 +124,11 @@ class vectFieldController:
         if avoid:
             vels = []
             for obstacle in closeObjects:
-                if self.change_orbit_wait_ < (rospy.Time.now() - self.last_orbit_change_).to_sec():
-                    self.decideOrbitDirection(obstacle)
+                # if self.change_orbit_wait_ < (rospy.Time.now() - self.last_orbit_change_).to_sec():
+                    # self.decideOrbitDirection(obstacle)
                 # velDes[:3] = self.getOrbit([obstacle.position.x,obstacle.position.y,obstacle.position.z])
 
-                # self.decideOrbitDirection(obstacle)
+                self.decideOrbitDirection(obstacle)
                 vel = self.getOrbit([obstacle.position.x,obstacle.position.y,obstacle.position.z])
                 mod = 1/(obstacle.distance)
                 # mod = np.exp(-1/(3*obstacle.distance))
